@@ -8,23 +8,39 @@ class FingersCounter:
 		cv.SetMouseCallback("Fingers Counter", mouseCallback)
 		self._cap = cap
 
+	def initCamera(self):
+		cameraReady = False
+		retval, frame = cap.read()
+		avg = np.average(frame)	
+		while cameraReady == False:
+			try:
+				cv2.imshow("Fingers Counter", frame)
+				if (avg != np.average(frame)):
+					cameraReady = True
+			except Exception, e:
+				print("Known library error happened - continue")
+				time.sleep(3)
+			try:
+				avg = np.average(frame)	
+			except Exception, e:
+				time.sleep(3)
+			retval, frame = cap.read()
+
+		self._firstFrame = frame
+
+
 	def run(self):
+		self.initCamera()
 		while self.display() < 0 and notClicked:
 			continue
 
 	def display(self):
 		retval, frame = cap.read()
-		try:
-			cv2.imshow("Fingers Counter", frame)
-		except Exception, e:
-			print("Known library error happened - continue")
-			time.sleep(3)
-
+		cv2.imshow("Fingers Counter", cv2.absdiff(self._firstFrame, frame))
 		return cv2.waitKey(30)
 
 def mouseCallback(event, x, y, a, b):
 	global notClicked
-	print('ok')
 	if (notClicked):
 		notClicked = (event != cv2.EVENT_LBUTTONUP) 
 
