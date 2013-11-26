@@ -20,16 +20,15 @@ def getBrightnessChange(lastFrameAvgs, newFrame, parts):
 	for x, y in zip(tmp, lastFrameAvgs):
 		if x > 1.04*y:
 			a += 1
+			if minxy > x - y:
+				minxy = x - y
 		elif 1.04*x < y:
 			b += 1
-		if minxy > x - y and x - y > 0:
-			minxy = x - y
-		if minyx > y - x and y - x > 0:
-			minyx = y - x
+			if minyx > y - x:
+				minyx = y - x
 	val = 0
 
 	#if we image is generally brightened we want to brighten first frame also
-	print(minxy, minyx)
 	if a > parts / 2: 
 		val = ceil(minxy)
 	elif b > parts / 2:
@@ -53,8 +52,7 @@ class FirstFrame:
 		if val != 0:
 			print(val)
 			print(time.clock())
-			x = np.add(self._frame, val)
-
+			x = np.add(self._frame, val).astype(np.uint8)
 
 			# we substract - some values will go thorugh 0
 			if val < 0: 
