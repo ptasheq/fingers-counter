@@ -51,10 +51,25 @@ class FirstFrame:
 
 	def adjustBrightness(self, val):
 		if val != 0:
-			problem is that we can get too low or too high values
-			'''x = np.add(self._frame, val)
-			print(x.shape)
-			self._frame = x'''
+			print(val)
+			print(time.clock())
+			x = np.add(self._frame, val)
+
+
+			# we substract - some values will go thorugh 0
+			if val < 0: 
+				#divide works like floor() we get zero when cell is less than val, one otherwise
+				y = np.array(np.divide(self._frame, abs(val)), np.bool) 
+				self._frame = np.multiply(x, y).astype(np.uint8)
+				
+			# we add - some values will go through 255
+			else:
+				y = np.array(np.divide(x, val), np.bool)
+				#we have to first set to zero, then add inverted because we will set bad cells at 255 
+				self._frame = np.add(np.multiply(x, y), np.add(y, 255)).astype(np.uint8)
+
+			print(time.clock())
+			#self._frame = x
 
 
 
