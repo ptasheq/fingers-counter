@@ -121,8 +121,22 @@ class FingersCounter:
 		retval, thresh = cv2.threshold(img, 30, 100, cv2.THRESH_BINARY)
 		thresh = cv2.GaussianBlur(thresh, (5,5), 0)
 		contours, hierarchy = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
-		for el in contours:
-			cv2.drawContours(thresh,[el],-1,255,2)        
+		# looking for max 2 largest shapes 
+		largestArea, largestContours = [0, 0], [0, 0]
+		if hierarchy != None:
+			for el in contours:
+				area = abs(cv2.contourArea(el))
+				print(area)
+				if (area > largestArea[0]):
+					largestArea[1] = largestArea[0]
+					largestArea[0] = area	
+					largestContours[1] = largestContours[0]
+					largestContours[0] = el
+				elif (area > largestArea[1]):
+					largestArea[1] = area
+					largestContours[1] = el	
+			for el in largestContours:
+				cv2.drawContours(thresh, [el],-1,255,3)        
 		cv2.imshow("Fingers Counter", thresh)
 		return cv2.waitKey(30)
 
