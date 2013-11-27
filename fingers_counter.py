@@ -13,16 +13,16 @@ def getBrightness(frame, n):
 	return tmp2
 
 def getBrightnessChange(lastFrameAvgs, newFrame, parts):
-	tmp = getBrightness(newFrame, parts) 
+	newFrameAvgs = getBrightness(newFrame, parts) 
 
 	# a is number of brightened rectangles, b is number of darkened rectangles
 	a, b = 0,0; minxy, minyx = 1000, 1000
-	for x, y in zip(tmp, lastFrameAvgs):
-		if x > 1.04*y:
+	for x, y in zip(newFrameAvgs, lastFrameAvgs):
+		if x > y + 3: #x > 1.04*y:
 			a += 1
 			if minxy > x - y:
 				minxy = x - y
-		elif 1.04*x < y:
+		elif x + 3 < y: #1.04*x < y:
 			b += 1
 			if minyx > y - x:
 				minyx = y - x
@@ -30,11 +30,11 @@ def getBrightnessChange(lastFrameAvgs, newFrame, parts):
 
 	#if we image is generally brightened we want to brighten first frame also
 	if a > parts / 2: 
-		val = ceil(minxy)
+		val = ceil(1.2*minxy)
 	elif b > parts / 2:
-		val = -ceil(minyx)
+		val = -ceil(1.2*minyx)
 
-	return tmp, int(val)
+	return newFrameAvgs, int(val)
 
 class FirstFrame:
 	def __init__(self, frame, w, h, parts):
@@ -119,6 +119,10 @@ class FingersCounter:
 			self._firstFrame.adjustBrightness(val)
 
 		retval, thresh = cv2.threshold(img, 30, 100, cv2.THRESH_BINARY)
+		thresh = cv2.GaussianBlur(thresh, (5,5), 0)
+		contours, hierarchy = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+		for el in contours:
+			cv2.drawContours(thresh,[el],-1,255,2)        
 		cv2.imshow("Fingers Counter", thresh)
 		return cv2.waitKey(30)
 
