@@ -104,7 +104,7 @@ class FingersCounter:
 		while self.display() < 0 and notClicked:
 			continue
 
-	def doCounting(self, contours, img, step, thresh):
+	def doCounting(self, contours, img, step, thresh, b):
 		length = len(contours)
 		fingers = 0
 		i = step - step + (length - 1) % step 
@@ -117,20 +117,23 @@ class FingersCounter:
 			if contours[i-step][0][0] >= 637  or contours[i][0][0] >= 637 or contours[i+step][0][0] >= 637 or contours[i-step][0][1] >= 477 or contours [i][0][1] >= 477 or contours[i+step][0][1] >= 477 :
 				i += 5
 				continue
-			vec1 = (contours[i-step][0][0]	- contours[i][0][0], contours[i+step][0][0] - contours[i][0][0])
-			vec2 = (contours[i-step][0][1]	- contours[i][0][1], contours[i+step][0][1] - contours[i][0][1])
-			#TODO: remember to notice the contours on image edge
+			vec1 = (contours[i-step][0][0]	- contours[i][0][0], contours[i-step][0][1] - contours[i][0][1])
+			vec2 = (contours[i+step][0][0]	- contours[i][0][0], contours[i+step][0][1] - contours[i][0][1])
 
-			cosAlpha = (vec1[0] * vec2[0] + vec1[1] * vec2[1]) / ((vec1[0] ** 2 + vec2[0] ** 2) * (vec1[1] ** 2 + vec2[1] ** 2)) ** 0.5
+			cosAlpha = (vec1[0] * vec2[0] + vec1[1] * vec2[1]) / ((vec1[0] ** 2 + vec1[1] ** 2) * (vec2[0] ** 2 + vec2[1] ** 2)) ** 0.5
 
-			if (cosAlpha <= 0.5):			
+			if (cosAlpha >= 0.5):			
 				# we have to check if we have finger of valley beetwen them
 				insideX = (contours[i-step][0][0] + contours[i+step][0][0]) / 2
 				insideY = (contours[i-step][0][1] + contours[i+step][0][1]) / 2
 				if img[insideY][insideX] == thresh:
+					cv2.circle(b, (contours[i][0][0], contours[i][0][1]), 5, 255)
 					fingers += 1
-				i += 2 * step
+					i += int(2 * step)
+				else:
+					i += 5
 			i += 1
+
 		self._fingers[0] += fingers; self._fingers[1] += 1
 		#print('fingers' + str(fingers))
 
@@ -170,9 +173,10 @@ class FingersCounter:
 					largestArea[1] = area
 					largestContours[1] = el	
 			for area, contour in zip(largestArea, largestContours):
-				if area > 0:
-					self.doCounting(contour, tmp, 60, 205)
+				if area > 15000:
+					print(area)
 					cv2.drawContours(b, contour,-1,255,3)
+					self.doCounting(contour, tmp, 80 if area > 55000 else 60, 205, b)
 		if self._fingers[1] >= 10:
 			print('You showed up ' + str(int(self._fingers[0] / self._fingers[1])) + ' fingers')
 			self._fingers = [0, 0]
