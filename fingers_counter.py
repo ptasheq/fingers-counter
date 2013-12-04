@@ -50,8 +50,6 @@ class FirstFrame:
 
 	def adjustBrightness(self, val):
 		if val != 0:
-			print(val)
-			print(time.clock())
 			x = np.add(self._frame, val).astype(np.uint8)
 
 			# we substract - some values will go thorugh 0
@@ -65,8 +63,6 @@ class FirstFrame:
 				y = np.array(np.divide(x, val), np.bool)
 				#we have to first set to zero, then add inverted because we will set bad cells at 255 
 				self._frame = np.add(np.multiply(x, y), np.add(y, 255)).astype(np.uint8)
-
-			print(time.clock())
 			#self._frame = x
 
 
@@ -80,6 +76,7 @@ class FingersCounter:
 		self._parts = 16
 
 	def initCamera(self):
+		self._fingers = [0, 0]
 		cameraReady = False
 		retval, frame = cap.read()
 		avg = np.average(frame)	
@@ -98,6 +95,7 @@ class FingersCounter:
 			retval, frame = cap.read()
 
 		frame = cv2.cvtColor(frame, cv.CV_RGB2GRAY)	
+		frame = cv2.GaussianBlur(frame, (5,5), 0)
 		self._firstFrame = FirstFrame(frame, 640, 480, self._parts) 
 		self._lastAvgs = self._firstFrame.getAvgs()
 
@@ -113,6 +111,12 @@ class FingersCounter:
 
 		while i < length-step:
 
+			if contours[i-step][0][0] <= 3  or contours[i][0][0] <= 3 or contours[i+step][0][0] <= 3 or contours[i-step][0][1] <= 3 or contours [i][0][1] <= 3 or contours[i+step][0][1] <= 3 :
+				i += 5
+				continue
+			if contours[i-step][0][0] >= 637  or contours[i][0][0] >= 637 or contours[i+step][0][0] >= 637 or contours[i-step][0][1] >= 477 or contours [i][0][1] >= 477 or contours[i+step][0][1] >= 477 :
+				i += 5
+				continue
 			vec1 = (contours[i-step][0][0]	- contours[i][0][0], contours[i+step][0][0] - contours[i][0][0])
 			vec2 = (contours[i-step][0][1]	- contours[i][0][1], contours[i+step][0][1] - contours[i][0][1])
 			#TODO: remember to notice the contours on image edge
@@ -126,10 +130,12 @@ class FingersCounter:
 				if img[insideY][insideX] == thresh:
 					fingers += 1
 				i += 2 * step
-			i += 1	 
-		print('fingers' + str(fingers))
+			i += 1
+		self._fingers[0] += fingers; self._fingers[1] += 1
+		#print('fingers' + str(fingers))
 
 	def display(self):
+		
 		retval, frame = cap.read()
 		frame = cv2.cvtColor(frame, cv.CV_RGB2GRAY)	
 		frame = cv2.GaussianBlur(frame, (5,5), 0)
@@ -167,6 +173,9 @@ class FingersCounter:
 				if area > 0:
 					self.doCounting(contour, tmp, 60, 205)
 					cv2.drawContours(b, contour,-1,255,3)
+		if self._fingers[1] >= 10:
+			print('You showed up ' + str(int(self._fingers[0] / self._fingers[1])) + ' fingers')
+			self._fingers = [0, 0]
 		cv2.imshow("Fingers Counter", b)
 		return cv2.waitKey(30)
 
