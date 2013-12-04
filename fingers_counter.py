@@ -106,9 +106,33 @@ class FingersCounter:
 		while self.display() < 0 and notClicked:
 			continue
 
+	def doCounting(self, contours, img, step, thresh):
+		length = len(contours)
+		fingers = 0
+		i = step - step + (length - 1) % step 
+
+		while i < length-step:
+
+			vec1 = (contours[i-step][0][0]	- contours[i][0][0], contours[i+step][0][0] - contours[i][0][0])
+			vec2 = (contours[i-step][0][1]	- contours[i][0][1], contours[i+step][0][1] - contours[i][0][1])
+			#TODO: remember to notice the contours on image edge
+
+			cosAlpha = (vec1[0] * vec2[0] + vec1[1] * vec2[1]) / ((vec1[0] ** 2 + vec2[0] ** 2) * (vec1[1] ** 2 + vec2[1] ** 2)) ** 0.5
+
+			if (cosAlpha <= 0.5):			
+				# we have to check if we have finger of valley beetwen them
+				insideX = (contours[i-step][0][0] + contours[i+step][0][0]) / 2
+				insideY = (contours[i-step][0][1] + contours[i+step][0][1]) / 2
+				if img[insideY][insideX] == thresh:
+					fingers += 1
+				i += 2 * step
+			i += 1	 
+		print('fingers' + str(fingers))
+
 	def display(self):
 		retval, frame = cap.read()
 		frame = cv2.cvtColor(frame, cv.CV_RGB2GRAY)	
+		frame = cv2.GaussianBlur(frame, (5,5), 0)
 
 		img = cv2.absdiff(frame, self._firstFrame.getImg())
 
@@ -118,15 +142,19 @@ class FingersCounter:
 			                                          frame, self._parts)
 			self._firstFrame.adjustBrightness(val)
 
-		retval, thresh = cv2.threshold(img, 30, 100, cv2.THRESH_BINARY)
-		thresh = cv2.GaussianBlur(thresh, (5,5), 0)
+		retval, thresh = cv2.threshold(img, 30, 205, cv2.THRESH_BINARY)
+
+		#deep copy of thresh
+		tmp = np.empty_like(thresh)
+		np.copyto(tmp, thresh)
+
+		b = np.zeros_like(thresh)
 		contours, hierarchy = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
 		# looking for max 2 largest shapes 
 		largestArea, largestContours = [0, 0], [0, 0]
 		if hierarchy != None:
 			for el in contours:
 				area = abs(cv2.contourArea(el))
-				print(area)
 				if (area > largestArea[0]):
 					largestArea[1] = largestArea[0]
 					largestArea[0] = area	
@@ -135,9 +163,11 @@ class FingersCounter:
 				elif (area > largestArea[1]):
 					largestArea[1] = area
 					largestContours[1] = el	
-			for el in largestContours:
-				cv2.drawContours(thresh, [el],-1,255,3)        
-		cv2.imshow("Fingers Counter", thresh)
+			for area, contour in zip(largestArea, largestContours):
+				if area > 0:
+					self.doCounting(contour, tmp, 60, 205)
+					cv2.drawContours(b, contour,-1,255,3)
+		cv2.imshow("Fingers Counter", b)
 		return cv2.waitKey(30)
 
 def mouseCallback(event, x, y, a, b):
