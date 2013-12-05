@@ -104,6 +104,39 @@ class FingersCounter:
 		while self.display() < 0 and notClicked:
 			continue
 
+	def getCosAlpha(self, contours, step, i):
+		vec1 = (contours[i-step][0][0]	- contours[i][0][0], contours[i-step][0][1] - contours[i][0][1])
+		vec2 = (contours[i+step][0][0]	- contours[i][0][0], contours[i+step][0][1] - contours[i][0][1])
+		return (vec1[0] * vec2[0] + vec1[1] * vec2[1]) / ((vec1[0] ** 2 + vec1[1] ** 2) * (vec2[0] ** 2 + vec2[1] ** 2)) ** 0.5
+
+	def findStep(self, contours):
+		length = len(contours)
+		dists = []
+		prevPoint = [0, 0]
+		for step in (65, 85, 120):
+			i = step - step + (length - 1) % step 
+			while i < length-step:
+				if contours[i-step][0][0] <= 3  or contours[i][0][0] <= 3 or contours[i+step][0][0] <= 3 or contours[i-step][0][1] <= 3 or contours [i][0][1] <= 3 or contours[i+step][0][1] <= 3 :
+					i += 5
+					continue
+				if contours[i-step][0][0] >= 637  or contours[i][0][0] >= 637 or contours[i+step][0][0] >= 637 or contours[i-step][0][1] >= 477 or contours [i][0][1] >= 477 or contours[i+step][0][1] >= 477 :
+					i += 5
+					continue
+
+				cosAlpha = self.getCosAlpha(contours, step, i)
+
+				if (cosAlpha >= 0.4):
+					if prevPoint != [0, 0]:
+						prevPoint = [contours[i][0][0], contours[i][0][1]]
+					else:
+						dists.append((prevPoint[0] - contours[i][0][0]) ** 2 + (prevPoint[1] - contours[i][0][1]) ** 2)
+						break
+				i += 5	
+
+		if dists != []:
+			return int(min(dists) ** 0.5 / 2)
+		return 65
+
 	def doCounting(self, contours, img, step, thresh, b):
 		length = len(contours)
 		fingers = 0
@@ -117,12 +150,10 @@ class FingersCounter:
 			if contours[i-step][0][0] >= 637  or contours[i][0][0] >= 637 or contours[i+step][0][0] >= 637 or contours[i-step][0][1] >= 477 or contours [i][0][1] >= 477 or contours[i+step][0][1] >= 477 :
 				i += 5
 				continue
-			vec1 = (contours[i-step][0][0]	- contours[i][0][0], contours[i-step][0][1] - contours[i][0][1])
-			vec2 = (contours[i+step][0][0]	- contours[i][0][0], contours[i+step][0][1] - contours[i][0][1])
 
-			cosAlpha = (vec1[0] * vec2[0] + vec1[1] * vec2[1]) / ((vec1[0] ** 2 + vec1[1] ** 2) * (vec2[0] ** 2 + vec2[1] ** 2)) ** 0.5
+			cosAlpha = self.getCosAlpha(contours, step, i)
 
-			if (cosAlpha >= 0.5):			
+			if (cosAlpha >= 0.4):			
 				# we have to check if we have finger of valley beetwen them
 				insideX = (contours[i-step][0][0] + contours[i+step][0][0]) / 2
 				insideY = (contours[i-step][0][1] + contours[i+step][0][1]) / 2
@@ -134,7 +165,7 @@ class FingersCounter:
 					i += 5
 			i += 1
 
-		self._fingers[0] += fingers; self._fingers[1] += 1
+		self._fingers[0] += fingers;
 		#print('fingers' + str(fingers))
 
 	def display(self):
@@ -173,10 +204,11 @@ class FingersCounter:
 					largestArea[1] = area
 					largestContours[1] = el	
 			for area, contour in zip(largestArea, largestContours):
-				if area > 15000:
-					print(area)
+				if area > 5000:
 					cv2.drawContours(b, contour,-1,255,3)
-					self.doCounting(contour, tmp, 80 if area > 55000 else 60, 205, b)
+
+					self.doCounting(contour, tmp, self.findStep(contour), 205, b)
+			self._fingers[1] += 1
 		if self._fingers[1] >= 10:
 			print('You showed up ' + str(int(self._fingers[0] / self._fingers[1])) + ' fingers')
 			self._fingers = [0, 0]
